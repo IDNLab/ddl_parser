@@ -26,7 +26,7 @@ def get_columns_block(ddl: str) -> str:
     match = re.search(r"\((.*)\)", ddl, re.DOTALL)  # Trova tutto ciò che è tra la prima parentesi aperta e l'ultima chiusa
     return match.group(1) if match else ""  # Ritorna il contenuto tra parentesi
 
-def get_primary_keys(ddl: str) -> list[str]:
+def get_primary_keys(ddl: str) :
     """
     Estrae i nomi delle colonne che fanno parte della PRIMARY KEY
     da una DDL SQL, anche se definite con CONSTRAINT.
@@ -46,7 +46,7 @@ def get_primary_keys(ddl: str) -> list[str]:
 
     return pk_columns
 
-def get_foreign_keys(ddl: str) -> list[dict]:
+def get_foreign_keys(ddl: str) :
     """
     Estrae le FOREIGN KEY da una DDL SQL.
     Restituisce una lista di dizionari con:
@@ -87,7 +87,7 @@ def split_column_defs(block: str) -> list:
 
 
 # Estrae il nome della colonna, ignorando vincoli come PRIMARY KEY, CHECK, ecc.
-def parse_column_name(definition: str) -> str | None:
+def parse_column_name(definition: str) :
     if re.match(r"(?i)^(constraint|primary\s+key|foreign\s+key|unique|check)\b", definition):
         return None  # Ignora righe che definiscono vincoli
     match = re.match(r"^(`(?P<name1>[^`]+)`|\"(?P<name2>[^\"]+)\"|(?P<name3>\w+))", definition)  # Cattura il nome della colonna
@@ -97,7 +97,7 @@ def parse_column_name(definition: str) -> str | None:
 
 
 # Estrae il tipo di dato della colonna (es: INT, VARCHAR, DECIMAL)
-def parse_datatype(definition: str) -> str | None:
+def parse_datatype(definition: str) :
     match = re.match(
         r"^(`[^`]+`|\"[^\"]+\"|\w+)\s+(?P<type>[A-Za-z]+)(?:\([^)]*\))?",  # Match sul tipo dopo il nome
         definition,
@@ -107,7 +107,7 @@ def parse_datatype(definition: str) -> str | None:
 
 
 # Estrae la lunghezza del tipo di dato, se presente (es: VARCHAR(255), DECIMAL(10,2))
-def parse_length(definition: str) -> str | None:
+def parse_length(definition: str) :
     """
     Estrae il contenuto tra parentesi dopo il tipo di dato, rimuovendo eventuali descrittori testuali.
     Esempi:
@@ -128,7 +128,7 @@ def parse_length(definition: str) -> str | None:
 
 # Coordina il parsing per estrarre nome, tipo e lunghezza delle colonne dalla DDL
 
-def get_columns_info(ddl: str) -> list[dict]:
+def get_columns_info(ddl: str) :
     block = get_columns_block(ddl)  # Estrae il blocco colonne
     defs = split_column_defs(block)  # Divide in definizioni singole
     pk = get_primary_keys(ddl)  # Lista dei nomi delle colonne PK
