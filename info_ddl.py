@@ -1,3 +1,7 @@
+"""
+Sviluppatore: Antonio Nunziante
+"""
+
 import re  # Importa il modulo delle espressioni regolari
 
 
