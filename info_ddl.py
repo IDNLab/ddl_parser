@@ -83,12 +83,10 @@ def get_foreign_keys(ddl: str) :
 
     return fk_constraints
 
-
 # Divide il blocco colonne in singole definizioni, evitando di spezzare su virgole interne
 
 def split_column_defs(block: str) -> list:
     return [part.strip() for part in re.split(r",(?![^()]*\))", block)]  # Split su virgole non annidate
-
 
 # Estrae il nome della colonna, ignorando vincoli come PRIMARY KEY, CHECK, ecc.
 def parse_column_name(definition: str) :
@@ -99,7 +97,6 @@ def parse_column_name(definition: str) :
         return match.group('name1') or match.group('name2') or match.group('name3')  # Restituisce il nome trovato
     return None
 
-
 # Estrae il tipo di dato della colonna (es: INT, VARCHAR, DECIMAL)
 def parse_datatype(definition: str) :
     match = re.match(
@@ -108,7 +105,6 @@ def parse_datatype(definition: str) :
         re.IGNORECASE
     )
     return match.group('type') if match else None  # Ritorna il tipo trovato
-
 
 # Estrae la lunghezza del tipo di dato, se presente (es: VARCHAR(255), DECIMAL(10,2))
 def parse_length(definition: str) :
@@ -129,27 +125,37 @@ def parse_length(definition: str) :
         return numeric_part.group(0) if numeric_part else None  # Ritorna la parte numerica
     return None
 
-
 # Coordina il parsing per estrarre nome, tipo e lunghezza delle colonne dalla DDL
 
 def get_columns_info(ddl: str) :
+    full_meta = get_db_schema_table(ddl) #estraggo database schema e tabella se ci sono
+    table=full_meta.get('table') or ''
+    schema=full_meta.get('schema') or ''
+    database = full_meta.get('database') or ''
+    print(database)
+    parts = []
+    if database:
+        parts.append(database)
+    if schema:
+        parts.append(schema)
+    parts.append(table)  # assumendo che table sia sempre presente
+    fq_table = '.'.join(parts) #unisco i metadati della tabella in una sola variabile
+    print(fq_table)
     block = get_columns_block(ddl)  # Estrae il blocco colonne
     defs = split_column_defs(block)  # Divide in definizioni singole
     pk = get_primary_keys(ddl)  # Lista dei nomi delle colonne PK
     fk = get_foreign_keys(ddl)  # Lista di dict con info FK
-    columns = []
+    metadata = []
     for d in defs:
         name = parse_column_name(d)  # Estrae nome colonna
         dtype = parse_datatype(d)  # Estrae tipo colonna
         length = parse_length(d)  # Estrae lunghezza colonna, se presente
         if name and dtype:
-            info = {'name': name, 'type': dtype}  # Dizionario colonna base
+            info = {'fully_qualified_table':fq_table,'column_name': name, 'datatype': dtype}  # Dizionario colonna base
             if length is not None:
                 info['length'] = length  # Aggiunge lunghezza se trovata
-
             # Chiave primaria
             info['is_key'] = 'Y' if name in pk else 'N'
-
             # Chiave esterna (se presente), altrimenti None
             fk_entry = next((entry for entry in fk if entry['column'] == name), None)
             if fk_entry:
@@ -160,9 +166,8 @@ def get_columns_info(ddl: str) :
                 info['is_foreign'] = 'N'
                 info['foreign_table'] = None
                 info['foreign_key'] = None
-
-            columns.append(info)  # Aggiunge la colonna all'elenco
-    return columns
+            metadata.append(info)  # Aggiunge la colonna all'elenco
+    return metadata
 
 
 # Esempio di utilizzo
@@ -179,7 +184,5 @@ if __name__ == '__main__':
         "CREATE TABLE metrics (\"total_count\" INT, value FLOAT)"
     ]
     for ddl in ddl_examples:
-        print(f"DDL: {ddl}")  # Stampa la DDL originale
-        print("Meta:", get_db_schema_table(ddl))  # Stampa database, schema e tabella
         print("Columns Info:", get_columns_info(ddl))  # Stampa info colonne
         print()
