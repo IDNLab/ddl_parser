@@ -3,6 +3,7 @@ Sviluppatore: Antonio Nunziante
 """
 
 import re  # Importa il modulo delle espressioni regolari
+import pandas as pd
 
 
 # Estrae database, schema e nome tabella da una DDL CREATE TABLE
@@ -127,7 +128,7 @@ def parse_length(definition: str) :
 
 # Coordina il parsing per estrarre nome, tipo e lunghezza delle colonne dalla DDL
 
-def get_columns_info(ddl: str) :
+def get_columns_info(ddl: str,out = 'dataframe') :
     full_meta = get_db_schema_table(ddl) #estraggo database schema e tabella se ci sono
     table=full_meta.get('table') or ''
     schema=full_meta.get('schema') or ''
@@ -167,7 +168,15 @@ def get_columns_info(ddl: str) :
                 info['foreign_table'] = None
                 info['foreign_key'] = None
             metadata.append(info)  # Aggiunge la colonna all'elenco
-    return metadata
+    if out=='dict':
+        return metadata
+    elif out =='dataframe':
+        if not metadata:
+            return pd.DataFrame()
+        df=pd.DataFrame(metadata)
+        return df[metadata[0].keys()]
+    else:
+        raise ValueError("Parametro out non valido.Usare dict o dataframe")
 
 
 # Esempio di utilizzo
@@ -181,7 +190,167 @@ if __name__ == '__main__':
     CONSTRAINT fk_role FOREIGN KEY(role_id) REFERENCES warehouse.staging.roles(role_id)
 );""",
         "CREATE OR REPLACE TABLE `warehouse`.`staging`.`users` ( `user_id` INT, `name` VARCHAR(255 char), details JSON, CONSTRAINT PRIMARY KEY(user_id),CONSTRAINT PRIMARY KEY(name) )",
-        "CREATE TABLE metrics (\"total_count\" INT, value FLOAT)"
+        "CREATE TABLE metrics (\"total_count\" INT, value FLOAT)",
+        """CREATE OR REPLACE TABLE "MY_DATABASE"."MY_SCHEMA"."MY_COMPLEX_TABLE" (
+    ID NUMBER(38,0) NOT NULL COMMENT 'Primary key',
+    USER_ID UUID NOT NULL,
+    USER_NAME STRING NOT NULL,
+    EMAIL VARCHAR(255),
+    IS_ACTIVE BOOLEAN DEFAULT TRUE,
+    CREATED_AT TIMESTAMP_LTZ DEFAULT CURRENT_TIMESTAMP(),
+    METADATA VARIANT,
+    TAGS ARRAY,
+    ATTRIBUTES OBJECT,
+    SCORE FLOAT,
+    BALANCE DECIMAL(10,2),
+    STATUS STRING CHECK (STATUS IN ('ACTIVE', 'INACTIVE', 'SUSPENDED')),
+    UPDATED_AT TIMESTAMP_NTZ,
+    CONSTRAINT PK_ID PRIMARY KEY (ID),
+    CONSTRAINT CHK_SCORE CHECK (SCORE >= 0),
+    CONSTRAINT UQ_EMAIL UNIQUE (EMAIL),
+    CONSTRAINT FK_USER FOREIGN KEY (USER_ID) REFERENCES MY_DATABASE.MY_SCHEMA.USERS(ID)
+)
+COMMENT = 'A very complex table with many data types and constraints'
+DATA_RETENTION_TIME_IN_DAYS = 7
+CHANGE_TRACKING = TRUE
+CLUSTER BY (USER_ID, STATUS);
+""",
+        """-- Creazione di uno schema complesso con DDL Oracle
+
+-- Tabella principale con partizionamento, LOB, e vincoli avanzati
+CREATE TABLE "HR"."MEGA_TABLE" (
+    "ID" NUMBER(20) GENERATED ALWAYS AS IDENTITY 
+        (START WITH 1000 INCREMENT BY 2 CACHE 100) CONSTRAINT PK_MEGA PRIMARY KEY,
+    "UUID" RAW(16) DEFAULT SYS_GUID(),
+    "GEOMETRY" SDO_GEOMETRY,
+    "JSON_DATA" CLOB CHECK ("JSON_DATA" IS JSON),
+    "COMPRESSED_DATA" BLOB,
+    "AUDIT_TIMESTAMP" TIMESTAMP(6) DEFAULT SYSTIMESTAMP,
+    "STATUS" VARCHAR2(20) 
+        CHECK ("STATUS" IN ('ACTIVE','SUSPENDED','DELETED')) 
+        DEFAULT 'ACTIVE',
+    "VERSION" NUMBER(8) DEFAULT 1,
+    "PARENT_ID" NUMBER(20),
+    "METADATA" XMLTYPE,
+    "HISTORY" VARCHAR2(4000) 
+        GENERATED ALWAYS AS (JSON_VALUE("JSON_DATA", '$.history')) VIRTUAL,
+    
+    CONSTRAINT "FK_PARENT" FOREIGN KEY ("PARENT_ID") 
+        REFERENCES "HR"."PARENT_TABLE" ("ID") 
+        ON DELETE CASCADE
+        DEFERRABLE INITIALLY DEFERRED
+)
+LOB ("JSON_DATA") STORE AS SECUREFILE (
+    TABLESPACE "LOB_DATA" 
+    COMPRESS HIGH 
+    DEDUPLICATE
+)
+PARTITION BY RANGE ("AUDIT_TIMESTAMP") 
+INTERVAL (NUMTOYMINTERVAL(1, 'MONTH'))
+SUBPARTITION BY HASH ("ID") SUBPARTITIONS 4
+(
+    PARTITION "P_INITIAL" VALUES LESS THAN (TO_DATE('2024-01-01', 'YYYY-MM-DD'))
+)
+COMPRESS FOR OLTP
+PCTFREE 10
+PCTUSED 40
+INITRANS 4
+PARALLEL 8
+NOLOGGING;
+
+-- Tabella di partizionamento esterno
+CREATE TABLE "HR"."EXTERNAL_DATA"
+(
+    "TRANSACTION_ID" NUMBER,
+    "AMOUNT" NUMBER(18,4),
+    "CURRENCY" CHAR(3),
+    "LOAD_DATE" DATE
+)
+ORGANIZATION EXTERNAL
+(
+    TYPE ORACLE_LOADER
+    DEFAULT DIRECTORY "DATA_DIR"
+    ACCESS PARAMETERS
+    (
+        RECORDS DELIMITED BY NEWLINE
+        BADFILE 'bad_%a_%p.bad'
+        LOGFILE 'log_%a_%p.log'
+        FIELDS TERMINATED BY ',' OPTIONALLY ENCLOSED BY '"'
+        MISSING FIELD VALUES ARE NULL
+        (
+            "TRANSACTION_ID",
+            "AMOUNT",
+            "CURRENCY",
+            "LOAD_DATE" DATE "YYYY-MM-DD"
+        )
+    )
+    LOCATION ('data_*.csv')
+)
+REJECT LIMIT UNLIMITED;
+
+-- Tabella temporale con versioning
+CREATE TABLE "HR"."TIME_TRAVEL" (
+    "ID" NUMBER PRIMARY KEY,
+    "DATA" VARCHAR2(100),
+    "VALID_FROM" TIMESTAMP(6) WITH TIME ZONE,
+    "VALID_TO" TIMESTAMP(6) WITH TIME ZONE
+) 
+FLASHBACK ARCHIVE "HISTORY_ARCHIVE";
+
+-- Tabella nested con oggetti
+CREATE TYPE "HR"."ADDRESS_TYP" AS OBJECT (
+    "STREET" VARCHAR2(100),
+    "CITY" VARCHAR2(50),
+    "POSTAL_CODE" VARCHAR2(20)
+);
+
+CREATE TABLE "HR"."EMPLOYEES" (
+    "EMP_ID" NUMBER(6) PRIMARY KEY,
+    "NAME" VARCHAR2(100),
+    "ADDRESS" "HR"."ADDRESS_TYP",
+    "SALARY" NUMBER(8,2) INVISIBLE,
+    "DEPARTMENT_ID" NUMBER(4)
+NESTED TABLE "PROJECTS" STORE AS "PROJECTS_NT";
+
+-- Indice bitmap join
+CREATE BITMAP INDEX "HR"."SALARY_BMI" ON "HR"."EMPLOYEES" ("SALARY")
+FROM "HR"."EMPLOYEES" e, "HR"."DEPARTMENTS" d
+WHERE e."DEPARTMENT_ID" = d."DEPARTMENT_ID"
+LOCAL;
+
+-- Indice function-based con partizionamento
+CREATE INDEX "HR"."IDX_UPPER_NAME" ON "HR"."EMPLOYEES" (UPPER("NAME"))
+GLOBAL PARTITION BY HASH ("EMP_ID") 
+PARTITIONS 8
+PARALLEL 4;
+
+-- Viste materializzate complesse
+CREATE MATERIALIZED VIEW "HR"."SUMMARY_MV"
+BUILD IMMEDIATE
+REFRESH COMPLETE ON DEMAND
+ENABLE QUERY REWRITE
+AS 
+SELECT d."DEPARTMENT_NAME", COUNT(e."EMP_ID"), AVG(e."SALARY")
+FROM "HR"."EMPLOYEES" e
+JOIN "HR"."DEPARTMENTS" d ON e."DEPARTMENT_ID" = d."DEPARTMENT_ID"
+GROUP BY d."DEPARTMENT_NAME";
+
+-- Politica di sicurezza
+BEGIN
+    DBMS_RLS.ADD_POLICY(
+        object_schema => 'HR',
+        object_name => 'EMPLOYEES',
+        policy_name => 'SALARY_SECURITY',
+        function_schema => 'SEC',
+        policy_function => 'HIDE_SALARIES',
+        statement_types => 'SELECT'
+    );
+END;
+/
+
+-- Commenti e metadata
+COMMENT ON TABLE "HR"."MEGA_TABLE" IS 'Tabella principale per stress test DDL';
+COMMENT ON COLUMN "HR"."MEGA_TABLE"."JSON_DATA" IS 'Documento JSON con dati complessi';"""
     ]
     for ddl in ddl_examples:
         print("Columns Info:", get_columns_info(ddl))  # Stampa info colonne
