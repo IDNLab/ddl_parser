@@ -1,0 +1,1 @@
+Aval_opt = ["SNOWFLAKE","ORACLE","SQL_SERVER"]

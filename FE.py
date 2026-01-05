@@ -1,10 +1,11 @@
 import streamlit as st
 import pandas as pd
 from info_ddl import get_columns_info
+import config
 
 st.set_page_config(page_title="DDL Parser Viewer", layout="wide")
 
-st.title("DDL Parser – Viewer")
+st.title("DDL Parser")
 
 # input DDL
 ddl_text = st.text_area(
@@ -48,3 +49,7 @@ if ddl_text.strip():
         st.exception(e)
 else:
     st.info("Incolla una DDL per avviare il parsing")
+
+st.subheader("CONVERSIONE DDL")
+st.selectbox(f"Scegli un sistema destinatario", options=config.Aval_opt)
+st.selectbox(f"Scegli un sistema sorgente", options=config.Aval_opt)
