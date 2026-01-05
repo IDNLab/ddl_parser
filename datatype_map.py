@@ -1,35 +1,38 @@
 SNOWFLAKE_TYPE_MAP = {
     "TIMESTAMP_NTZ": {
         "oracle": ["TIMESTAMP"],
-        "sqlserver": ["DATETIME","DATETIME2","SMALLDATETIME"],
+        "sql_server": ["DATETIME","DATETIME2","SMALLDATETIME"],
         "snowflake": ["TIMESTAMP_NTZ"]
     },
 
     "TIMESTAMP_TZ": {
         "oracle": ["TIMESTAMP WITH TIME ZONE"],
-        "sqlserver": ["DATETIMEOFFSET"],
+        "sql_server": ["DATETIMEOFFSET"],
         "snowflake": ["TIMESTAMP_TZ"]
     },
 
     "DATE": {
         "oracle": ["DATE"],
-        "sqlserver": ["DATE"],
+        "sql_server": ["DATE"],
         "snowflake": ["DATE"]
     },
-
+    "TIME":{
+        "oracle": ["TIME"],
+    "sql_server": ["TIME"]
+    },
     "NUMBER": {
         "oracle": ["NUMBER","INTEGER","FLOAT"],
-        "sqlserver": ["INT","SNALLINT","BINARY","BIGINT","DECIMAL","NUMERIC"],
+        "sql_server": ["INT","SMALLINT","BINARY","BIGINT","DECIMAL","NUMERIC","BIT","TINYINT","FLOAT","MONEY","REAL","SMALLMONEY"],
         "snowflake": ["NUMBER"]
     },
     "VARCHAR": {
         "oracle": ['VARCHAR','CHAR','NVARCHAR','NVARCHAR2'],
-        "sqlserver": ['VARCHAR','CHAR','NVARCHAR','NVARCHAR2'],
+        "sql_server": ['VARCHAR','CHAR','NVARCHAR','NVARCHAR2',"NCHAR","TEXT"],
         "snowflake": ['VARCHAR','CHAR']
     },
     "VARIANT": {
         "oracle": ["VARIANT","BLOB","CLOB"],
-        "sqlserver": ["VARIANT","BLOB"],
+        "sql_server": ["VARIANT","BLOB","VARBINARY","IMAGE","XML","SQL","GEOMETRY","GEOGRAPHY","HIERARCHYID"],
         "snowflake": ["VARIANT"]
     }
 }

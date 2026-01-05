@@ -2,6 +2,19 @@ import streamlit as st
 import pandas as pd
 from info_ddl import get_columns_info
 import config
+from datatype_map import SNOWFLAKE_TYPE_MAP
+
+def map_to_target_type(source_type: str, source_system: str) -> str:
+    source_system = source_system.lower()
+    source_type = source_type.upper()  # opzionale ma consigliato
+
+    for snowflake_type, system_map in SNOWFLAKE_TYPE_MAP.items():
+        if source_system in system_map:
+            if source_type in system_map[source_system]:
+                return snowflake_type
+
+    return "UNMAPPED"
+
 
 st.set_page_config(page_title="DDL Parser Viewer", layout="wide")
 
@@ -51,5 +64,10 @@ else:
     st.info("Incolla una DDL per avviare il parsing")
 
 st.subheader("CONVERSIONE DDL")
-st.selectbox(f"Scegli un sistema destinatario", options=config.Aval_opt)
-st.selectbox(f"Scegli un sistema sorgente", options=config.Aval_opt)
+target_system = st.selectbox(f"Scegli un sistema destinatario", options=config.Aval_opt)
+source_system = st.selectbox(f"Scegli un sistema sorgente", options=config.Aval_opt)
+df_modded = get_columns_info(ddl_text)
+df_modded["SNOWFLAKE_DATA_TYPE"] = df_modded["datatype"].apply(
+    lambda x: map_to_target_type(x, source_system)
+)
+st.dataframe(df_modded, use_container_width=True)
