@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from info_ddl import get_columns_info
+from info_ddl_oop import DDLInfo
 import config
 from datatype_map import SNOWFLAKE_TYPE_MAP
 
@@ -31,7 +31,7 @@ if ddl_text.strip():
 
     try:
         # il tuo parser deve restituire un DataFrame
-        df = get_columns_info(ddl_text)
+        df = DDLInfo(ddl_text).to_dataframe()
 
         st.subheader("DataFrame restituito dal parser")
         st.dataframe(df, use_container_width=True)
@@ -64,10 +64,11 @@ else:
     st.info("Incolla una DDL per avviare il parsing")
 
 st.subheader("CONVERSIONE DDL")
-target_system = st.selectbox(f"Scegli un sistema destinatario", options=config.Aval_opt)
-source_system = st.selectbox(f"Scegli un sistema sorgente", options=config.Aval_opt)
-df_modded = get_columns_info(ddl_text)
-df_modded["SNOWFLAKE_DATA_TYPE"] = df_modded["datatype"].apply(
-    lambda x: map_to_target_type(x, source_system)
-)
-st.dataframe(df_modded, use_container_width=True)
+if ddl_text.strip():
+    target_system = st.selectbox(f"Scegli un sistema destinatario", options=config.Aval_opt)
+    source_system = st.selectbox(f"Scegli un sistema sorgente", options=config.Aval_opt)
+    df_modded = df
+    df_modded["SNOWFLAKE_DATA_TYPE"] = df_modded["datatype"].apply(
+        lambda x: map_to_target_type(x, source_system)
+    )
+    st.dataframe(df_modded, use_container_width=True)
