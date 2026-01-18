@@ -4,6 +4,8 @@ Sviluppatore: Antonio Nunziante
 
 import re  # Importa il modulo delle espressioni regolari
 import pandas as pd
+import logging
+
 from IPython.display import display
 
 # Estrae database, schema e nome tabella da una DDL CREATE TABLE

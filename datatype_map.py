@@ -28,7 +28,7 @@ SNOWFLAKE_TYPE_MAP = {
     "VARCHAR": {
         "oracle": ['VARCHAR','CHAR','NVARCHAR','NVARCHAR2'],
         "sql_server": ['VARCHAR','CHAR','NVARCHAR','NVARCHAR2',"NCHAR","TEXT"],
-        "snowflake": ['VARCHAR','CHAR']
+        "snowflake": ['VARCHAR']
     },
     "VARIANT": {
         "oracle": ["VARIANT","BLOB","CLOB"],
@@ -36,3 +36,5 @@ SNOWFLAKE_TYPE_MAP = {
         "snowflake": ["VARIANT"]
     }
 }
+
+aval_db_src_to_snow = ["oracle","sql_server","snowflake"]

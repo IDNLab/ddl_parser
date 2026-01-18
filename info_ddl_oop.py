@@ -5,11 +5,36 @@ Data_creazione 2026-01-06
 
 import re
 import pandas as pd
+import logging
+import os
+from datetime import datetime
 
+log_dir = "logs"
+today = datetime.now().strftime("%Y%m%d")
+logger = logging.getLogger("info_DDL_oop")
+log_file = f"{log_dir}/info_ddl_{today}.log"
+
+os.makedirs(log_dir, exist_ok=True)
+
+
+logger.setLevel(logging.DEBUG)
+
+
+logging.basicConfig(
+    filename=log_file,
+    filemode="a",
+    level=logging.DEBUG,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+)
+
+
+logger.info("Parser avviato")
 
 class DDLInfo:
     def __init__(self, ddl: str):
+        logger.debug(f"|__init__|")
         self.ddl = ddl
+        logger.debug(f"|__init__| ddl acquired: {self.ddl}")
         self.db_schema_table = self._get_db_schema_table()
         self.columns_block = self._get_columns_block()
         self.column_defs = self._split_column_defs(self.columns_block)
@@ -20,10 +45,19 @@ class DDLInfo:
             for d in self.column_defs
             if self._parse_column_name(d)
         ]
+        self.column_names_str = ",".join(self.column_names)
+        self.data_dict = self.to_dict()
+        self.column_and_dt = ',\n'.join(
+                                    f"{r['column_name']} {r['datatype']}"
+                                    for r in self.to_dict()
+                                    )
+        self.count_element_ddl = len(self.data_dict)
     # -------------------------
     # METADATI TABELLA
     # -------------------------
     def _get_db_schema_table(self) -> dict:
+        logger.info(f"|_get_db_schema_table| Parsing...")
+        logger.debug(f"|_get_db_schema_table| ddl: \n {self.ddl}")
         pattern = re.compile(
             r"(?i)\bcreate\s+"
             r"(?:or\s+replace\s+)?"
@@ -46,6 +80,8 @@ class DDLInfo:
         )
 
         match = pattern.search(self.ddl)
+        logger.debug(f"|_get_db_schema_table| match: \n {match}")
+
         if not match:
             return {'database': None, 'schema': None, 'table': None}
 
@@ -56,46 +92,70 @@ class DDLInfo:
         }
 
     def _get_columns_block(self) -> str:
+        logger.debug(f"|_get_columns_block| START")
         match = re.search(r"\((.*)\)", self.ddl, re.DOTALL)
+        logger.debug(f"|_get_columns_block| match: \n {match.group(1)}")
+        logger.debug(f"|_get_columns_block| END")
         return match.group(1) if match else ""
 
     @staticmethod
     def _split_column_defs(block: str) -> list:
-        return [p.strip() for p in re.split(r",(?![^()]*\))", block)]
+        logger.debug(f"|_split_column_defs| START")
+        output = [p.strip() for p in re.split(r",(?![^()]*\))", block)]
+        logger.debug(f"|_split_column_defs| {output}")
+        logger.debug(f"|_split_column_defs| END")
+        return output
 
     # -------------------------
     # CONSTRAINT
     # -------------------------
     def _get_primary_keys(self) -> list:
+        logger.debug(f"|_get_primary_keys| START")
         pk_columns = []
         for d in self.column_defs:
+            logger.debug(f"|_get_primary_keys| cycle, parsing primary key {d}")
             match = re.search(
                 r"(?i)(?:constraint\s+\w+\s+)?primary\s+key\b[^(]*\(([^)]+)\)",
                 d
             )
+            logger.debug(f"|_get_primary_keys| cycle, matching primary key: {match}")
             if match:
                 for col in match.group(1).split(','):
+                    logger.debug(f"|_get_primary_keys| cycle, matching group of primary key: {col}")
                     pk_columns.append(col.strip().strip('`"'))
+                    logger.debug(f"|_get_primary_keys| cycle, matching group of primary key found: {pk_columns}")
+        logger.debug(f"|_get_primary_keys| PK = {pk_columns}")
+        logger.debug(f"|_get_primary_keys| END")
         return pk_columns
 
     def _get_foreign_keys(self) -> list:
+        logger.debug(f"|_get_foreign_keys| START")
         fk_constraints = []
         for d in self.column_defs:
+            logger.debug(f"|_get_foreign_keys| cycle: {d}")
             match = re.search(
                 r"(?i)(?:constraint\s+\w+\s+)?foreign\s+key\s*\(([^)]+)\)\s+references\s+([^\s(]+)\s*\(([^)]+)\)",
                 d
             )
             if match:
+                logger.debug(f"|_get_foreign_keys| cycle match: {match}")
                 local_cols = [c.strip().strip('`"') for c in match.group(1).split(',')]
+                logger.debug(f"|_get_foreign_keys| cycle match| local cols| : {local_cols}")
                 ref_table = match.group(2).strip().strip('`"')
+                logger.debug(f"|_get_foreign_keys| cycle match| local cols| ref_table: {ref_table}")
                 ref_cols = [c.strip().strip('`"') for c in match.group(3).split(',')]
+                logger.debug(f"|_get_foreign_keys| cycle match| local cols| ref_table | ref_cols : {ref_cols}")
 
                 for l, r in zip(local_cols, ref_cols):
+                    logger.debug(f"|_get_foreign_keys| cycle match| local cols| ref_table | ref_cols | cycle for ref_cols: {l}")
                     fk_constraints.append({
                         'column': l,
                         'ref_table': ref_table,
                         'ref_column': r
                     })
+                    logger.debug(
+                        f"|_get_foreign_keys| cycle match| local cols| ref_table | ref_cols | cycle for ref_cols| cycle for ref_cols|fk_constraint: {fk_constraints}")
+        logger.debug(f"|_get_foreign_keys| END")
         return fk_constraints
 
     # -------------------------
@@ -103,25 +163,35 @@ class DDLInfo:
     # -------------------------
     @staticmethod
     def _parse_column_name(definition: str):
+        logger.debug(f"|_parse_column_name| CHECK MATCH FOR {definition}")
         if re.match(r"(?i)^(constraint|primary\s+key|foreign\s+key|unique|check)\b", definition):
+            logger.debug(f"|_parse_column_name| CHECK MATCH FOR {definition} | IS NOT A MATCH"  )
             return None
         match = re.match(
             r"^(`(?P<n1>[^`]+)`|\"(?P<n2>[^\"]+)\"|(?P<n3>\w+))",
             definition
         )
-        return match.group('n1') or match.group('n2') or match.group('n3') if match else None
+        logger.debug(f"|_parse_column_name| CHECK MATCH FOR {definition} | IT IS A MATCH")
+        output = match.group('n1') or match.group('n2') or match.group('n3') if match else None
+        logger.debug(f"|_parse_column_name| CHECK MATCH FOR {definition} | IT IS A MATCH| result: {output}")
+        logger.debug(f"|_parse_column_name| END CHECK FOR {definition}")
+        return output
 
     @staticmethod
     def _parse_datatype(definition: str):
+        logger.debug(f"|_parse_datatype| START FOR {definition}")
         match = re.match(
             r"^(`[^`]+`|\"[^\"]+\"|\w+)\s+(?P<type>[A-Za-z]+)",
             definition,
             re.IGNORECASE
         )
-        return match.group('type') if match else None
+        output = match.group('type') or None
+        logger.debug(f"|_parse_datatype| END FOR {definition}")
+        return output
 
     @staticmethod
     def _parse_length(definition: str):
+        logger.debug(f"|_parse_length| START FOR {definition}")
         match = re.match(
             r"^(`[^`]+`|\"[^\"]+\"|\w+)\s+[A-Za-z]+\(([^)]+)\)",
             definition,
@@ -130,12 +200,15 @@ class DDLInfo:
         if not match:
             return 0
         numeric = re.match(r"^[\d,]+", match.group(2).strip())
-        return numeric.group(0) if numeric else 0
+        output =  numeric.group(0) if numeric else 0
+        logger.debug(f"|_parse_length| END FOR {definition}")
+        return output
 
     # -------------------------
     # OUTPUT
     # -------------------------
     def to_dict(self) -> list:
+        logger.debug(f"|to_dict| START")
         meta = []
         db = self.db_schema_table.get('database') or ''
         sc = self.db_schema_table.get('schema') or ''
@@ -164,18 +237,21 @@ class DDLInfo:
                 'foreign_table': fk['ref_table'] if fk else None,
                 'foreign_key': fk['ref_column'] if fk else None
             })
+        logger.debug(f"|to_dict| END")
         return meta
 
     def to_dataframe(self) -> pd.DataFrame:
+        logger.debug(f"|to_dataframe| START")
         data = self.to_dict()
         if not data:
             return pd.DataFrame()
+        logger.debug(f"|to_dataframe| END")
         return pd.DataFrame(data)[data[0].keys()]
 
 if __name__ == '__main__':
     ddl = """CREATE OR REPLACE TRANSIENT TABLE dbo.RENT.Clienti (
     ClienteID INT(11) NOT NULL,
-    CodiceFiscale CHAR(16) NOT NULL,
+    CodiceFiscale CHAR(VARCHAR 16) NOT NULL,
     Nome NVARCHAR(100) NOT NULL,
     Cognome NVARCHAR(100) NOT NULL,
     DataNascita DATE NULL,
@@ -188,8 +264,13 @@ if __name__ == '__main__':
     CONSTRAINT CK_Clienti_Email CHECK (Email LIKE '%@%.%')
 );"""
 
-    print(DDLInfo(ddl).db_schema_table)
-    print(DDLInfo(ddl).column_defs)
-    print(DDLInfo(ddl).column_names)
+    #print(DDLInfo(ddl).db_schema_table)
+    #print(DDLInfo(ddl).column_defs)
+    #print("Dataframe:")
     print(DDLInfo(ddl).to_dataframe())
-    DDLInfo(ddl).to_dataframe().to_html("ddl_parsed.html", index=False)
+    #print("dict:")
+    #print(DDLInfo(ddl).data_dict)
+    #print("Number of parsed element : ",DDLInfo(ddl).count_element_ddl)
+    #print("columns : ",DDLInfo(ddl).column_names_str)
+    #print("Columns and datatype: \n"+DDLInfo(ddl).column_and_dt)
+    #DDLInfo(ddl).to_dataframe().to_html("ddl_parsed.html", index=False)
