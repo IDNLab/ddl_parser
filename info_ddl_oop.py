@@ -8,11 +8,12 @@ import pandas as pd
 import logging
 import os
 from datetime import datetime
+import config
 
-log_dir = "logs"
+log_dir = config.log_dir
 today = datetime.now().strftime("%Y%m%d")
 logger = logging.getLogger("info_DDL_oop")
-log_file = f"{log_dir}/info_ddl_{today}.log"
+log_file = f"{log_dir}/{config.log_filename}_{today}.log"
 
 os.makedirs(log_dir, exist_ok=True)
 
@@ -31,27 +32,39 @@ logging.basicConfig(
 logger.info("Parser avviato")
 
 class DDLInfo:
-    def __init__(self, ddl: str):
-        logger.debug(f"|__init__|")
+    def __init__(self, ddl: str, ddl_name = None):
+        logger.debug(f"|__init__| , {ddl_name}")
         self.ddl = ddl
-        logger.debug(f"|__init__| ddl acquired: {self.ddl}")
+        logger.debug(f"|__init__| , {ddl_name} ,  ddl acquired: {self.ddl}")
+        logger.debug(f"|__init__| , {ddl_name} ,  db_schema_table | acquiring")
         self.db_schema_table = self._get_db_schema_table()
+        logger.debug(f"|__init__| , {ddl_name} ,  db_schema_table | acquired")
+        logger.debug(f"|__init__| , {ddl_name} ,  columns_block | acquiring")
         self.columns_block = self._get_columns_block()
+        logger.debug(f"|__init__| , {ddl_name} ,  columns_block | acquired")
+        logger.debug(f"|__init__| , {ddl_name} ,  column_defs | acquiring")
         self.column_defs = self._split_column_defs(self.columns_block)
+        logger.debug(f"|__init__| , {ddl_name} ,  column_defs | acquired")
+        logger.debug(f"|__init__| , {ddl_name} ,  primary_keys | acquiring")
         self.primary_keys = self._get_primary_keys()
+        logger.debug(f"|__init__| , {ddl_name} ,  primary_keys | acquired")
+        logger.debug(f"|__init__| , {ddl_name} ,  foreign_keys | acquiring")
         self.foreign_keys = self._get_foreign_keys()
+        logger.debug(f"|__init__| , {ddl_name} ,  foreign_keys | acquired")
+        logger.debug(f"|__init__| , {ddl_name} ,  column_names | acquiring")
         self.column_names = [
             self._parse_column_name(d)
             for d in self.column_defs
             if self._parse_column_name(d)
         ]
+        logger.debug(f"|__init__| , {ddl_name} ,  column_names | acquired")
         self.column_names_str = ",".join(self.column_names)
-        self.data_dict = self.to_dict()
+        #self.data_dict = self.to_dict()
         self.column_and_dt = ',\n'.join(
                                     f"{r['column_name']} {r['datatype']}"
                                     for r in self.to_dict()
                                     )
-        self.count_element_ddl = len(self.data_dict)
+        self.count_element_ddl = len(self.to_dict())
     # -------------------------
     # METADATI TABELLA
     # -------------------------
@@ -241,11 +254,14 @@ class DDLInfo:
         return meta
 
     def to_dataframe(self) -> pd.DataFrame:
-        logger.debug(f"|to_dataframe| START")
+        logger.debug(f"|TO DATAFRAME| START")
+        logger.debug(f"|TO DATAFRAME| Building dict to convert:")
         data = self.to_dict()
         if not data:
+            logger.debug(f"|TO DATAFRAME| Building dict to convert: Not acquirable")
             return pd.DataFrame()
-        logger.debug(f"|to_dataframe| END")
+        logger.debug(f"|TO DATAFRAME| Building dict to convert: acquired. Building Dataframe")
+        logger.debug(f"|TO DATAFRAME| END")
         return pd.DataFrame(data)[data[0].keys()]
 
 if __name__ == '__main__':
@@ -267,10 +283,10 @@ if __name__ == '__main__':
     #print(DDLInfo(ddl).db_schema_table)
     #print(DDLInfo(ddl).column_defs)
     #print("Dataframe:")
-    print(DDLInfo(ddl).to_dataframe())
+    #print(DDLInfo(ddl).to_dataframe())
     #print("dict:")
     #print(DDLInfo(ddl).data_dict)
     #print("Number of parsed element : ",DDLInfo(ddl).count_element_ddl)
     #print("columns : ",DDLInfo(ddl).column_names_str)
     #print("Columns and datatype: \n"+DDLInfo(ddl).column_and_dt)
-    #DDLInfo(ddl).to_dataframe().to_html("ddl_parsed.html", index=False)
+    DDLInfo(ddl).to_dataframe().to_html("ddl_parsed.html", index=False)

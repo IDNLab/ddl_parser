@@ -1,0 +1,111 @@
+DDLInfo – SQL DDL Parser
+=====================
+
+Overview
+--------
+DDLInfo è un parser SQL sviluppato in Python per l’analisi di istruzioni
+CREATE TABLE e l’estrazione di metadati strutturali a livello tabella e colonna.
+
+Il modulo è progettato per contesti enterprise come:
+- data governance
+- data catalog
+- metadata ingestion
+- reverse engineering di modelli dati
+
+
+Main Responsibilities
+---------------------
+Il parser è responsabile di:
+- identificare database, schema e tabella
+- estrarre e normalizzare le definizioni di colonna
+- individuare primary key e foreign key
+- associare le constraint alle colonne corrette
+- produrre output strutturato e facilmente consumabile
+
+
+Supported Features
+------------------
+- CREATE TABLE
+- CREATE OR REPLACE
+- TEMP / TRANSIENT TABLE
+- quoting con backtick, doppie virgolette e parentesi quadre
+- primary key semplici e composite
+- foreign key a livello tabella
+
+
+Limitations
+-----------
+- Non supporta ALTER TABLE
+- Non supporta CREATE VIEW
+- Le colonne devono precedere le constraint
+- Le foreign key inline non sono supportate
+
+
+Usage
+-----
+from ddl_parser.info_ddl_oop import DDLInfo
+
+ddl = """
+CREATE TABLE schema.clienti (
+    id INT,
+    nome VARCHAR(100),
+    CONSTRAINT pk_clienti PRIMARY KEY (id)
+);
+"""
+
+parser = DDLInfo(ddl)
+df = parser.to_dataframe()
+
+
+Available Outputs
+-----------------
+- to_dict()           -> lista di dizionari
+- to_dataframe()      -> pandas DataFrame
+- column_names_str    -> stringa colonne separate da virgola
+- column_and_dt       -> colonne + datatype formattati
+- count_element_ddl   -> numero colonne parse
+
+
+Output Schema
+-------------
+- fully_qualified_table
+- database
+- schema_name
+- table_name
+- column_name
+- datatype
+- length
+- is_key
+- is_foreign
+- foreign_table
+- foreign_key
+
+
+Logging
+-------
+Il modulo utilizza la libreria standard logging di Python.
+- logger: info_DDL_oop
+- livello: DEBUG
+- file di log giornaliero
+- configurazione tramite config.py
+
+Design Notes
+------------
+- Architettura OOP
+- Parsing orchestrato in fase di inizializzazione
+- Metodi privati per separare le responsabilità
+- Output stateless e riutilizzabile
+
+
+Future Improvements
+-------------------
+- Introduzione typing statico
+- Eccezioni custom di dominio
+- Supporto multi-dialetto SQL
+- Parsing ALTER TABLE
+- Test automatici con pytest
+
+
+Author
+------
+Antonio Nunziante
