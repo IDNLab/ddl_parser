@@ -8,7 +8,7 @@ import pandas as pd
 import logging
 import os
 from datetime import datetime
-import config
+from mainconfig import config
 
 log_dir = config.log_dir
 today = datetime.now().strftime("%Y%m%d")
@@ -287,4 +287,4 @@ if __name__ == '__main__':
     #print("Number of parsed element : ",DDLInfo(ddl).count_element_ddl)
     #print("columns : ",DDLInfo(ddl).column_names_str)
     #print("Columns and datatype: \n"+DDLInfo(ddl).column_and_dt)
-    DDLInfo(ddl).to_dataframe().to_html("ddl_parsed.html", index=False)
+    DDLInfo(ddl).to_dataframe().to_html("./ddl_parsed.html", index=False)

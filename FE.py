@@ -1,8 +1,7 @@
 import streamlit as st
-import pandas as pd
-from info_ddl_oop import DDLInfo
-import config
-from datatype_map import SNOWFLAKE_TYPE_MAP
+from parser_core.info_ddl_oop import DDLInfo
+from mainconfig import config
+from mainconfig.datatype_map import SNOWFLAKE_TYPE_MAP
 
 def map_to_target_type(source_type: str, source_system: str) -> str:
     source_system = source_system.lower()
