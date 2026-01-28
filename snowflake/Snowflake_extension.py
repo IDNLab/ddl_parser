@@ -9,31 +9,35 @@ log_dir = config.log_dir
 today = datetime.now().strftime("%Y%m%d")
 logger = logging.getLogger("Snowflake_extension")
 log_file = f"{log_dir}/{config.log_filename}_{today}.log"
-
+logger.setLevel(logging.DEBUG)
 os.makedirs(log_dir, exist_ok=True)
 
 
-logger.setLevel(logging.DEBUG)
 
 
 class SnowflakeExtend(DDLInfo):
     def __init__(self,ddl, source_db):
         super().__init__(ddl)
+        logger.debug(f"|__init__| , estensione Snowflake avviata")
         self.dataframe_from_source = self.to_dataframe()
+        logger.debug(f"|__init__| , dataframe catturato")
         self.config_conversion_dict = typemap
         reverse_typemap = build_reverse_typemap(
             typemap,
             source_system=source_db
         )
+        logger.debug(f"|__init__| , typemap : {reverse_typemap}")
         if not self.dataframe_from_source.empty:
+            logger.debug(f"|__init__| , aggiunta datatype Snowflake")
             self.dataframe_from_source["ADDITIONAL_DTYPE"] = (
                 self.dataframe_from_source["datatype"]
                 .str.upper()
                 .map(reverse_typemap)
             )
         else:
-            pass
+            logger.debug(f"|__init__| , aggiunta datatype Snowflake non riuscita, il dataframe in input è vuoto")
         self.dataframe_snw = self.dataframe_from_source
+        logger.debug(f"|__init__| , aggiunta lunghezza per Snowflake")
         self.dataframe_snw["ADDITIONAL_LENGHT"] = (
             self.dataframe_snw["length"]
             .where(self.dataframe_snw["length"].notna() & (self.dataframe_snw["length"] != 0))
@@ -51,6 +55,7 @@ class SnowflakeExtend(DDLInfo):
             (self.dataframe_snw["length"] == 0),
             "ADDITIONAL_LENGHT"
         ] = '38,0'
+        logger.debug(f"|__init__| , aggiunta lunghezza per Snowflake eseguita correttamente")
 
 
 
@@ -83,5 +88,7 @@ if __name__ == "__main__":
     CONSTRAINT CK_Clienti_Email CHECK (Email LIKE '%@%.%')
 );"""
     SnowflakeExtend(ddl,"sql_server").dataframe_snw.to_html("ddl_parsed_snow.html", index=False)
+    #df_snow=SnowflakeExtend(ddl, "sql_server").dataframe_snw
+
 
 
