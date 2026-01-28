@@ -4,6 +4,6 @@ from datetime import datetime
 
 log_dir = './logs'
 log_filename = 'info_DDL'
-#APP_CONFIG
 
-Aval_opt = ["SNOWFLAKE","ORACLE","SQL_SERVER"]
+input_dir = './in'
+#APP_CONFIG

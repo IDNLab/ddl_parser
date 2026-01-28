@@ -1,3 +1,3 @@
 from info_ddl_oop import DDLInfo
 
-input_dir =
+input_dir = "in"

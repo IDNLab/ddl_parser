@@ -37,4 +37,6 @@ SNOWFLAKE_TYPE_MAP = {
     }
 }
 
-aval_db_src_to_snow = ["oracle","sql_server","snowflake"]
+AVAL_MAP_SNOW = {
+        "snowflake":["oracle","sql_server","snowflake"]
+    }

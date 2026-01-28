@@ -29,8 +29,6 @@ logging.basicConfig(
 )
 
 
-logger.info("Parser avviato")
-
 class DDLInfo:
     def __init__(self, ddl: str, ddl_name = None):
         logger.debug(f"|__init__| , {ddl_name}")
