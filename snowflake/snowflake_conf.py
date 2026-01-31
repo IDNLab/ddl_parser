@@ -40,3 +40,7 @@ SNOWFLAKE_TYPE_MAP = {
 AVAL_MAP_SNOW = {
         "snowflake":["oracle","sql_server","snowflake"]
     }
+
+create_mode = "replace"
+l0_rn_table_suffix = "ST"
+L1_rn_table_suffix = "ODS"

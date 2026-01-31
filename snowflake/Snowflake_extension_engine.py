@@ -1,6 +1,13 @@
 from parser_core.info_ddl_oop import DDLInfo
-from snowflake.snowflake_datatype_map import SNOWFLAKE_TYPE_MAP as typemap
+from snowflake.snowflake_conf import SNOWFLAKE_TYPE_MAP as typemap
 from datetime import datetime
+from common_trx.transformations import (
+    build_reverse_typemap,
+    generate_additional_dtype_cols,
+    generate_additional_length_cols,
+    generate_additional_upper_cols,
+    get_elements,
+    count_df_elements)
 import os
 import logging
 from mainconfig import config
@@ -19,57 +26,46 @@ class SnowflakeExtend(DDLInfo):
     def __init__(self,ddl, source_db):
         super().__init__(ddl)
         logger.debug(f"|__init__| , estensione Snowflake avviata")
+        logger.info(f"|__init__| , prevelo il dataframe dalla classe info_ddl_oop")
         self.dataframe_from_source = self.to_dataframe()
+        if self.dataframe_from_source.empty:
+            logger.error(f"|__init__| , dataframe non catturato da DDLinfo")
+            raise ValueError(
+                "DataFrame vuoto: impossibile inizializzare SnowflakeExtend"
+            )
         logger.debug(f"|__init__| , dataframe catturato")
         self.config_conversion_dict = typemap
-        reverse_typemap = build_reverse_typemap(
-            typemap,
-            source_system=source_db
-        )
+        reverse_typemap = build_reverse_typemap(typemap,source_system=source_db)
         logger.debug(f"|__init__| , typemap : {reverse_typemap}")
-        if not self.dataframe_from_source.empty:
-            logger.debug(f"|__init__| , aggiunta datatype Snowflake")
-            self.dataframe_from_source["ADDITIONAL_DTYPE"] = (
-                self.dataframe_from_source["datatype"]
-                .str.upper()
-                .map(reverse_typemap)
-            )
-        else:
-            logger.debug(f"|__init__| , aggiunta datatype Snowflake non riuscita, il dataframe in input è vuoto")
-        self.dataframe_snw = self.dataframe_from_source
+        self.conv_df = generate_additional_dtype_cols(self.dataframe_from_source,reverse_typemap)
         logger.debug(f"|__init__| , aggiunta lunghezza per Snowflake")
-        self.dataframe_snw["ADDITIONAL_LENGHT"] = (
-            self.dataframe_snw["length"]
-            .where(self.dataframe_snw["length"].notna() & (self.dataframe_snw["length"] != 0))
-        )
+        self.dataframe_snw=generate_additional_length_cols(self.conv_df)
+        if self.dataframe_snw.empty:
+            raise ValueError(
+                "DataFrame dataframe_snw: impossibile proseguire con le trasformazioni Snowflake"
+            )
+        self.dataframe_snw=generate_additional_upper_cols(self.dataframe_snw)
+        #ONLY FOR SNOWFLAKE DETERMINISTIC FIELDS
         self.dataframe_snw.loc[
-            self.dataframe_snw["ADDITIONAL_DTYPE"] == "TIMESTAMP_NTZ",
-            "ADDITIONAL_LENGHT"
+            self.dataframe_snw[config.add_field_dtype] == "TIMESTAMP_NTZ",
+            config.add_field_length
         ] = 9
         self.dataframe_snw.loc[
-            self.dataframe_snw["ADDITIONAL_DTYPE"] == "DATE",
-            "ADDITIONAL_LENGHT"
+            self.dataframe_snw[config.add_field_dtype] == "DATE",
+            config.add_field_length
         ] = ''
         self.dataframe_snw.loc[
-            (self.dataframe_snw["ADDITIONAL_DTYPE"] == "NUMBER") &
+            (self.dataframe_snw[config.add_field_dtype] == "NUMBER") &
             (self.dataframe_snw["length"] == 0),
-            "ADDITIONAL_LENGHT"
+            config.add_field_length
         ] = '38,0'
         logger.debug(f"|__init__| , aggiunta lunghezza per Snowflake eseguita correttamente")
-
-
-
-def build_reverse_typemap(typemap: dict, source_system: str) -> dict:
-    reverse = {}
-
-    for target_type, systems in typemap.items():
-        if source_system not in systems:
-            continue
-
-        for src_type in systems[source_system]:
-            reverse[src_type.upper()] = target_type
-
-    return reverse
+        self.snowfieldlist = get_elements(self.dataframe_snw,"column_name")
+        self.snowfieldlist_upper = [
+            x.upper() for x in get_elements(self.dataframe_snw, "column_name")
+        ]
+        self.snowfields = ",".join(self.snowfieldlist_upper)
+        self.count_element_transformed = count_df_elements(self.dataframe_snw,self.snowfields)
 
 if __name__ == "__main__":
     ddl = """CREATE OR REPLACE TRANSIENT TABLE dbo.RENT.Clienti (
@@ -89,6 +85,6 @@ if __name__ == "__main__":
 );"""
     SnowflakeExtend(ddl,"sql_server").dataframe_snw.to_html("ddl_parsed_snow.html", index=False)
     #df_snow=SnowflakeExtend(ddl, "sql_server").dataframe_snw
-
+    print(SnowflakeExtend(ddl,"sql_server").snowfields)
 
 

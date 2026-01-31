@@ -1,0 +1,179 @@
+DESCRIZIONE
+
+Questo script estende la classe DDLInfo per convertire DDL SQL provenienti da sistemi sorgente
+(es. SQL Server, Oracle) in una struttura dati compatibile con Snowflake.
+
+Il modulo:
+
+esegue il parsing del DDL
+
+estrae i metadati delle colonne
+
+applica regole di conversione Snowflake
+
+restituisce un DataFrame pronto per generazione DDL, validazioni e documentazione
+
+Il comportamento è FAIL-FAST: qualsiasi errore strutturale blocca l’esecuzione.
+
+ARCHITETTURA
+
+DDL SQL
+|
+v
+DDLInfo (parser base)
+|
+v
+SnowflakeExtend (estensione Snowflake)
+|
+v
+DataFrame Snowflake-ready
+
+DIPENDENZE
+
+pandas
+
+logging
+
+datetime
+
+Moduli interni:
+
+parser_core.info_ddl_oop.DDLInfo
+
+snowflake.snowflake_conf
+
+common_trx.transformations
+
+mainconfig.config
+
+CONFIGURAZIONE LOGGING
+
+Il logging è configurato con:
+
+livello DEBUG
+
+file giornaliero con data
+
+directory creata automaticamente se assente
+
+Formato file log:
+<log_dir>/<log_filename>_YYYYMMDD.log
+
+CLASSE SnowflakeExtend
+
+Costruttore:
+
+SnowflakeExtend(ddl, source_db)
+
+Parametri:
+
+ddl: stringa contenente il DDL SQL sorgente
+
+source_db: sistema sorgente (es. sql_server, oracle)
+
+Flusso di inizializzazione:
+
+parsing del DDL tramite DDLInfo
+
+conversione in DataFrame
+
+validazione struttura
+
+applicazione trasformazioni Snowflake
+
+esposizione output pronti all’uso
+
+TRASFORMAZIONI APPLICATE
+
+Conversione datatype
+
+utilizza SNOWFLAKE_TYPE_MAP
+
+costruisce una reverse typemap in base al sistema sorgente
+
+popola la colonna ADDITIONAL_DTYPE
+
+Gestione lunghezze
+
+popola la colonna ADDITIONAL_LENGTH
+
+applica regole Snowflake deterministiche:
+
+TIMESTAMP_NTZ -> 9
+DATE -> vuoto
+NUMBER con length = 0 -> 38,0
+
+Normalizzazione nomi colonna
+
+tutti i nomi colonna vengono convertiti in MAIUSCOLO
+
+OUTPUT PRINCIPALI
+
+DataFrame finale:
+self.dataframe_snw
+
+Contiene:
+
+nome colonna
+
+datatype Snowflake
+
+lunghezza normalizzata
+
+metadati pronti per generazione DDL
+
+Lista campi Snowflake:
+self.snowfieldlist_upper
+
+Esempio:
+CLIENTEID
+NOME
+COGNOME
+EMAIL
+
+Stringa CSV campi Snowflake:
+self.snowfields
+
+Esempio:
+CLIENTEID,NOME,COGNOME,EMAIL
+
+Conteggio elementi trasformati:
+self.count_element_transformed
+
+GESTIONE ERRORI
+
+Il modulo adotta un approccio FAIL-FAST.
+
+Errori bloccanti:
+
+DataFrame vuoto
+
+colonne obbligatorie mancanti
+
+mapping datatype non valido
+
+Ogni errore:
+
+viene loggato
+
+interrompe immediatamente l’esecuzione
+
+ESEMPIO DI UTILIZZO
+
+ddl = "CREATE TABLE ..."
+
+snow = SnowflakeExtend(ddl, "sql_server")
+
+print(snow.snowfields)
+
+snow.dataframe_snw.to_html("ddl_parsed_snow.html", index=False)
+
+USO COME SCRIPT STANDALONE
+
+Il file può essere eseguito direttamente.
+
+Output:
+
+file HTML con il risultato del parsing Snowflake
+
+stampa su stdout dei nomi colonna normalizzati
